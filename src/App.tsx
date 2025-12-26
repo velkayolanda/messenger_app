@@ -1,6 +1,9 @@
 import React, {useState} from 'react';
 import './App.css';
 import Messenger from './Messenger';
+import Gmail from './Gmail';
+import Work from './Work';
+import Timetable from './Timetable';
 
 function App() {
     const [currentView, setCurrentView] = useState('home');
@@ -17,7 +20,8 @@ function App() {
             <nav>
                 <button onClick={() => setCurrentView('messenger')}>Messenger</button>
               <button onClick={()=> setCurrentView("gmail")}>Gmail</button>
-              <button onClick={()=> setCurrentView("work-email")}>Work Email</button>
+              <button onClick={()=> setCurrentView("work")}>Work Email</button>
+                <button onClick={()=> setCurrentView("Timetable")}>Timetable</button>
               <button onClick={()=> setSideBarOpen(prev => !prev)}>Todo List</button>
             </nav>
           </aside>
@@ -30,18 +34,9 @@ function App() {
                     </>
                 )}
                 {currentView === 'messenger' && <Messenger />}
-                {currentView === 'gmail' && (
-                    <>
-                        <h2>GMAIL</h2>
-                        <p>GMail content will go here</p>
-                    </>
-                )}
-                {currentView === 'work-email' && (
-                    <>
-                        <h2>UNOB mail</h2>
-                        <p>Unob mail content will go here</p>
-                    </>
-                )}
+                {currentView === 'gmail' && <Gmail />}
+                {currentView === 'work' && <Work/>}
+                {currentView === 'Timetable' && <Timetable/> }
                 {sideBarOpen && (
                     <aside className="todo-sidebar">
                         <button className="close-todo" onClick={() => setSideBarOpen(false)}>Close</button>

@@ -12,6 +12,12 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "electron-store": "^11.0.2",
+    "ical.js": "^2.2.1",
+    "imap": "^0.8.19",
+    "mailparser": "^3.9.1",
+    "nodemailer": "^7.0.12",
+    "papaparse": "^5.5.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-scripts": "5.0.1",
@@ -45,6 +51,7 @@
     ]
   },
   "devDependencies": {
+    "@types/papaparse": "^5.5.2",
     "concurrently": "^9.2.1",
     "electron": "^39.2.7",
     "electron-is-dev": "^3.0.1",
