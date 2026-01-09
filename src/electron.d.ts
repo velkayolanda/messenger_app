@@ -21,6 +21,9 @@ export interface ElectronAPI {
     clearCredentials: () => Promise<{ success: boolean }>;
     saveTimetableId: (id: string) => Promise<{ success: boolean }>;
     getTimetableId: () => Promise<string | null>;
+    saveSpotifyToken: (token: string) => Promise<{ success: boolean }>;
+    getSpotifyToken: () => Promise<string | null>;
+    clearSpotifyToken: () => Promise<{ success: boolean }>;
 }
 
 declare global {

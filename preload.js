@@ -15,4 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     saveTimetableId: (id) => ipcRenderer.invoke('storage:saveTimetableId', id),
     getTimetableId: () => ipcRenderer.invoke('storage:getTimetableId'),
+    saveSpotifyToken: (token) => ipcRenderer.invoke('storage:saveSpotifyToken', token),
+    getSpotifyToken: () => ipcRenderer.invoke('storage:getSpotifyToken'),
+    clearSpotifyToken: () => ipcRenderer.invoke('storage:clearSpotifyToken'),
 });

@@ -170,3 +170,17 @@ ipcMain.handle('storage:getTimetableId', async () => {
     const id = store.get('timetableId');
     return id || null;
 });
+ipcMain.handle('storage:saveSpotifyToken', async (event, token) => {
+    store.set('spotifyToken', token);
+    return { success: true };
+});
+
+ipcMain.handle('storage:getSpotifyToken', async () => {
+    const token = store.get('spotifyToken');
+    return token || null;
+});
+
+ipcMain.handle('storage:clearSpotifyToken', async () => {
+    store.delete('spotifyToken');
+    return { success: true };
+});
