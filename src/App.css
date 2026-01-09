@@ -13,8 +13,16 @@
 .app-header {
   background-color: #282c34;
   color: white;
-  padding: 20px;
+  padding: 1.25rem; /* 20px */
   text-align: center;
+}
+
+.header-button {
+  font-size: 2rem; /* 32px */
+  color: white;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .app-container {
@@ -23,32 +31,69 @@
   overflow: hidden;
 }
 
+.hamburger-container {
+  width: 3.75rem; /* 60px */
+  background-color: #2c3e50;
+  display: flex;
+  flex-direction: column;
+  /*gap: 0.625rem; /* 10px */
+  gap: 1.2rem;
+  align-items: center;
+  padding-top: 1.25rem; /* 20px */
+  z-index: 1001;
+}
+
+.hamburger-button {
+  background: #2c3e50;
+  width: 1.875rem; /* 30px */
+  height: 1.875rem; /* 30px */
+  border: none;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.hamburger-button:hover {
+  transform: scale(1.1);
+}
+
 .sidebar {
-  width: 250px;
-  background-color: #f0f0f0;
-  padding: 20px;
-  border-right: 1px solid #ddd;
+  position: fixed;
+  left: -15.625rem; /* -250px */
+  top: 4.5rem; /* 72px */
+  bottom: 0;
+  width: 15.625rem; /* 250px */
+  background-color: #4b7094;
+  padding: 1.25rem; /* 20px */
+  margin-top: 0.28125rem; /* 4.5px */
+  border-right: 1px solid #2c3e50;
+  transition: left 0.3s ease;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.sidebar-open {
+  left: 3.75rem; /* 60px */
 }
 
 .sidebar h2 {
-  margin-bottom: 20px;
-  font-size: 18px;
+  margin-bottom: 1.25rem; /* 20px */
+  font-size: 1.125rem; /* 18px */
 }
 
 .sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.625rem; /* 10px */
 }
 
 .sidebar button {
-  padding: 12px;
+  padding: 0.75rem; /* 12px */
   background-color: #4CAF50;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 0.3125rem; /* 5px */
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px */
 }
 
 .sidebar button:hover {
@@ -57,35 +102,36 @@
 
 .main-content {
   flex: 1;
-  padding: 30px;
+  padding: 0;
   background-color: white;
 }
+
 .todo-sidebar {
   position: fixed;
   right: 0;
   top: 0;
-  width: 300px;
+  width: 18.75rem; /* 300px */
   height: 100vh;
   background-color: #f9f9f9;
   border-left: 2px solid #ddd;
-  padding: 20px;
-  box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+  padding: 1.25rem; /* 20px */
+  box-shadow: -0.125rem 0 0.625rem rgba(0, 0, 0, 0.1); /* -2px 0 10px */
   overflow-y: auto;
   z-index: 1000;
 }
 
 .todo-sidebar h2 {
-  margin-bottom: 20px;
+  margin-bottom: 1.25rem; /* 20px */
 }
 
 .close-todo {
   background-color: #f44336;
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 0.5rem 1rem; /* 8px 16px */
+  border-radius: 0.25rem; /* 4px */
   cursor: pointer;
-  margin-bottom: 15px;
+  margin-bottom: 0.9375rem; /* 15px */
 }
 
 .close-todo:hover {
