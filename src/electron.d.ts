@@ -24,6 +24,8 @@ export interface ElectronAPI {
     saveSpotifyToken: (token: string) => Promise<{ success: boolean }>;
     getSpotifyToken: () => Promise<string | null>;
     clearSpotifyToken: () => Promise<{ success: boolean }>;
+    readTimetableFile: (filePath: string) => Promise<{ success: boolean; data?: string; lastModified?: string; error?: string }>;
+    checkTimetableExists: (filePath: string) => Promise<{ exists: boolean }>;
 }
 
 declare global {

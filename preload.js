@@ -18,4 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveSpotifyToken: (token) => ipcRenderer.invoke('storage:saveSpotifyToken', token),
     getSpotifyToken: () => ipcRenderer.invoke('storage:getSpotifyToken'),
     clearSpotifyToken: () => ipcRenderer.invoke('storage:clearSpotifyToken'),
+    readTimetableFile: (filePath) => ipcRenderer.invoke('fs:readTimetableFile', filePath),
+    checkTimetableExists: (filePath) => ipcRenderer.invoke('fs:checkTimetableExists', filePath),
 });

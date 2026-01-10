@@ -14,8 +14,9 @@ function Timetable() {
     const [error, setError] = useState('');
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const [checking, setChecking] = useState(false);
 
-    const parseICSFile = (icsData: string) => {
+    const parseICSFile = (icsData: string, modifiedDate?: string) => {
         try {
             const jcalData = ICAL.parse(icsData);
             const comp = new ICAL.Component(jcalData);
@@ -35,14 +36,36 @@ function Timetable() {
             parsedEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
 
             setEvents(parsedEvents);
-            setLastUpdated(new Date());
+            setLastUpdated(modifiedDate ? new Date(modifiedDate) : new Date());
             setError('');
 
-            // Save to localStorage for persistence
+            // Save to localStorage
             localStorage.setItem('timetable_data', JSON.stringify(parsedEvents));
-            localStorage.setItem('timetable_updated', new Date().toISOString());
+            localStorage.setItem('timetable_updated', (modifiedDate || new Date().toISOString()));
         } catch (err: any) {
             setError('Failed to parse calendar file: ' + err.message);
+        }
+    };
+
+    const checkAndLoadFile = async () => {
+        setChecking(true);
+
+        try {
+            // Try to fetch the file from public folder
+            const response = await fetch('/timetable/rozvrh.ics');
+
+            if (response.ok) {
+                const icsData = await response.text();
+                const lastModified = response.headers.get('Last-Modified');
+                parseICSFile(icsData, lastModified || undefined);
+                setError('');
+            } else {
+                setError('No timetable file found. Place rozvrh.ics in public/timetable/ folder.');
+            }
+        } catch (err: any) {
+            setError('Could not load timetable file. Make sure rozvrh.ics is in public/timetable/');
+        } finally {
+            setChecking(false);
         }
     };
 
@@ -68,30 +91,21 @@ function Timetable() {
             setEvents(JSON.parse(savedData));
             setLastUpdated(new Date(savedDate));
         }
+
+        // Check for file on mount
+        checkAndLoadFile();
     }, []);
 
-    // Auto-refresh reminder every hour
+    // Auto-check for file updates every 5 minutes
     useEffect(() => {
         if (!autoRefresh) return;
 
         const interval = setInterval(() => {
-            const now = new Date();
-            if (lastUpdated) {
-                const hoursSinceUpdate = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
-
-                // Remind if data is older than 24 hours
-                if (hoursSinceUpdate > 24) {
-                    setError('⚠️ Timetable data is older than 24 hours. Consider re-uploading to get the latest schedule.');
-                }
-            }
-        }, 60 * 60 * 1000); // Check every hour
+            checkAndLoadFile();
+        }, 5 * 60 * 1000); // Check every 5 minutes
 
         return () => clearInterval(interval);
-    }, [autoRefresh, lastUpdated]);
-
-    const handleRefreshReminder = () => {
-        setError('');
-    };
+    }, [autoRefresh]);
 
     // Group events by date
     const groupedEvents: { [key: string]: CalendarEvent[] } = {};
@@ -99,7 +113,6 @@ function Timetable() {
     today.setHours(0, 0, 0, 0);
 
     events.forEach(event => {
-        // Only show upcoming events
         if (event.start >= today) {
             const dateKey = event.start.toLocaleDateString();
             if (!groupedEvents[dateKey]) {
@@ -121,18 +134,33 @@ function Timetable() {
                             onChange={(e) => setAutoRefresh(e.target.checked)}
                             style={{ marginRight: '5px' }}
                         />
-                        Auto-refresh reminders
+                        Auto-check for updates
                     </label>
                 </div>
             </div>
 
-            {/* File Upload */}
-            <div style={{ marginBottom: '20px' }}>
+            {/* Controls */}
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                    onClick={checkAndLoadFile}
+                    disabled={checking}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: checking ? '#ccc' : '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: checking ? 'not-allowed' : 'pointer'
+                    }}
+                >
+                    {checking ? '🔄 Checking...' : '🔄 Check for Updates'}
+                </button>
+
                 <label
                     htmlFor="ics-upload"
                     style={{
                         padding: '10px 20px',
-                        backgroundColor: '#4CAF50',
+                        backgroundColor: '#2196F3',
                         color: 'white',
                         border: 'none',
                         borderRadius: '4px',
@@ -140,7 +168,7 @@ function Timetable() {
                         display: 'inline-block'
                     }}
                 >
-                    📥 Upload/Update ICS File
+                    📥 Manual Upload
                 </label>
                 <input
                     id="ics-upload"
@@ -149,73 +177,50 @@ function Timetable() {
                     onChange={handleFileUpload}
                     style={{ display: 'none' }}
                 />
+            </div>
 
-                {lastUpdated && (
-                    <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                        Last updated: {lastUpdated.toLocaleString()}
-                    </div>
-                )}
+            {lastUpdated && (
+                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>
+                    Last updated: {lastUpdated.toLocaleString()}
+                </div>
+            )}
 
-                <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                    Download your timetable from:
-                    <a
-                        href="https://apl.unob.cz/portalosoba/Rozvrh/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ marginLeft: '5px', color: '#4CAF50' }}
-                    >
-                        University Portal
-                    </a>
-                </p>
+            <div style={{
+                padding: '15px',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '4px',
+                marginBottom: '20px',
+                fontSize: '14px'
+            }}>
+                <strong>How to update:</strong>
+                <ol style={{ marginTop: '10px', marginBottom: '0' }}>
+                    <li>Download ICS from <a href="https://apl.unob.cz/portalosoba/Rozvrh/" target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>University Portal</a></li>
+                    <li>Save it as <code style={{ backgroundColor: '#fff', padding: '2px 5px', borderRadius: '3px' }}>rozvrh.ics</code> in: <code style={{ backgroundColor: '#fff', padding: '2px 5px', borderRadius: '3px' }}>public/timetable/</code></li>
+                    <li>App will auto-check every 5 minutes, or click "Check for Updates"</li>
+                </ol>
             </div>
 
             {error && (
                 <div style={{
                     padding: '10px',
-                    backgroundColor: error.includes('⚠️') ? '#fff3cd' : '#ffebee',
-                    color: error.includes('⚠️') ? '#856404' : '#c62828',
+                    backgroundColor: '#ffebee',
+                    color: '#c62828',
                     borderRadius: '4px',
-                    marginBottom: '20px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+                    marginBottom: '20px'
                 }}>
-                    <span>{error}</span>
-                    {error.includes('⚠️') && (
-                        <button
-                            onClick={handleRefreshReminder}
-                            style={{
-                                padding: '5px 10px',
-                                backgroundColor: 'transparent',
-                                border: '1px solid #856404',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '12px'
-                            }}
-                        >
-                            Dismiss
-                        </button>
-                    )}
+                    {error}
                 </div>
             )}
 
             {/* Events Display */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
                 {events.length === 0 ? (
-                    <div style={{ textAlign: 'center', marginTop: '40px' }}>
-                        <p style={{ color: '#666', marginBottom: '20px' }}>
-                            No timetable loaded. Upload an ICS file to get started.
-                        </p>
-                        <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto', color: '#666' }}>
-                            <li>Go to the University Portal</li>
-                            <li>Navigate to your timetable</li>
-                            <li>Export/Download as ICS file</li>
-                            <li>Upload it here</li>
-                        </ol>
-                    </div>
+                    <p style={{ color: '#666', textAlign: 'center', marginTop: '40px' }}>
+                        No timetable loaded. Place rozvrh.ics in public/timetable/ folder or upload manually.
+                    </p>
                 ) : Object.keys(groupedEvents).length === 0 ? (
                     <p style={{ color: '#666', textAlign: 'center', marginTop: '40px' }}>
-                        No upcoming events. All classes may be in the past.
+                        No upcoming events.
                     </p>
                 ) : (
                     Object.entries(groupedEvents).map(([date, dayEvents]) => (

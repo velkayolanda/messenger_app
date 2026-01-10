@@ -7,6 +7,7 @@ const { simpleParser } = require('mailparser');
 const Store = require('electron-store').default;
 const store = new Store({ name: 'email-credentials' });
 let imapConnection = null;
+const fs = require('fs');
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors');
 
 let mainWindow;
@@ -196,4 +197,27 @@ ipcMain.handle('storage:getSpotifyToken', async () => {
 ipcMain.handle('storage:clearSpotifyToken', async () => {
     store.delete('spotifyToken');
     return { success: true };
+});
+
+// File system handler for reading timetable
+ipcMain.handle('fs:readTimetableFile', async (event, filePath) => {
+    try {
+        const data = fs.readFileSync(filePath, 'utf8');
+        const stats = fs.statSync(filePath);
+        return {
+            success: true,
+            data: data,
+            lastModified: stats.mtime.toISOString()
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('fs:checkTimetableExists', async (event, filePath) => {
+    try {
+        return { exists: fs.existsSync(filePath) };
+    } catch (error) {
+        return { exists: false };
+    }
 });
