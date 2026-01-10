@@ -7,11 +7,15 @@ const { simpleParser } = require('mailparser');
 const Store = require('electron-store').default;
 const store = new Store({ name: 'email-credentials' });
 let imapConnection = null;
+app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors');
 
 let mainWindow;
 
 function createWindow() {
     // Create the browser window
+    app.commandLine.appendSwitch('widevine-cdm-path', process.execPath);
+    app.commandLine.appendSwitch('widevine-cdm-version', '1.4.9.1070');
+
     mainWindow = new BrowserWindow({
         width: 1500,
         height: 900,
@@ -21,7 +25,16 @@ function createWindow() {
             webviewTag: true,
             partition: 'persist:main',
             enableRemoteModule: false,
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.js'),
+            plugins: true
+        }
+    });
+    mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['media', 'mediaKeySystem'];
+        if (allowedPermissions.includes(permission)) {
+            callback(true);
+        } else {
+            callback(false);
         }
     });
 

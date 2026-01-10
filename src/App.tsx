@@ -7,7 +7,10 @@ import Timetable from './Timetable';
 import menuIcon from './icons/menu.svg';
 import messengerIcon from './icons/messenger.svg'
 import gmailIcon from './icons/gmail.svg'
-import Spotify from "./spotify/Spotify";
+//import Spotify from "./spotify/Spotify";
+//import Spotify from './spotify/SpotifyWeb';
+import Spotify from './spotify/SpotifyIframe';
+
 
 function App() {
     const [currentView, setCurrentView] = useState('home');
