@@ -1,6 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
+const isDev = !app.isPackaged;
 const { ipcMain } = require('electron');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
@@ -42,7 +42,7 @@ function createWindow() {
     // Load your React app
     const startUrl = isDev
         ? 'http://localhost:3000'  // Development: from React dev server
-        : `file://${path.join(__dirname, './build/index.html')}`; // Production: from built files
+        : `file://${path.join(__dirname, 'build', 'index.html')}`; // Production: from built files
 
     mainWindow.loadURL(startUrl);
 
