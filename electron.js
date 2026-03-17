@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, components } = require('electron');
 const path = require('path');
 const isDev = !app.isPackaged;
 const { ipcMain } = require('electron');
@@ -8,14 +8,15 @@ const Store = require('electron-store').default;
 const store = new Store({ name: 'email-credentials' });
 let imapConnection = null;
 const fs = require('fs');
+
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors');
 
 let mainWindow;
 
-function createWindow() {
-    // Create the browser window
-    app.commandLine.appendSwitch('widevine-cdm-path', process.execPath);
-    app.commandLine.appendSwitch('widevine-cdm-version', '1.4.9.1070');
+async function createWindow() {
+    // Wait for Widevine CDM to be ready (Castlabs Electron)
+    await components.whenReady();
+    console.log('Widevine CDM ready:', components.status());
 
     mainWindow = new BrowserWindow({
         width: 1500,
@@ -27,7 +28,8 @@ function createWindow() {
             partition: 'persist:main',
             enableRemoteModule: false,
             preload: path.join(__dirname, 'preload.js'),
-            plugins: true
+            plugins: true,
+            sandbox: false
         }
     });
     mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -48,8 +50,15 @@ function createWindow() {
 
     // Open DevTools in development mode
     if (isDev) {
-        mainWindow.webContents.openDevTools();
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
+
+    // Suppress Autofill DevTools errors
+    mainWindow.webContents.on('console-message', (event, level, message) => {
+        if (message.includes('Autofill')) {
+            event.preventDefault();
+        }
+    });
 
     mainWindow.on('closed', () => {
         mainWindow = null;
@@ -57,7 +66,7 @@ function createWindow() {
 }
 
 // When Electron is ready, create the window
-app.on('ready', createWindow);
+app.whenReady().then(createWindow);
 
 // Quit when all windows are closed (except on macOS)
 app.on('window-all-closed', () => {

@@ -7,8 +7,9 @@ interface SpotifyLoginProps {
 }
 
 function SpotifyLogin({ onLogout, isLoggedIn }: SpotifyLoginProps) {
-    const handleLogin = () => {
-        window.location.href = getAuthUrl();
+    const handleLogin = async () => {
+        const authUrl = await getAuthUrl();
+        window.location.href = authUrl;
     };
 
     if (isLoggedIn && onLogout) {
