@@ -51,7 +51,22 @@ function Timetable() {
         setChecking(true);
 
         try {
-            // Try to fetch the file from public folder
+            if (window.electronAPI) {
+                const exists = await window.electronAPI.checkTimetableExists();
+                if (!exists.exists) {
+                    setError('No timetable uploaded yet. Use "Manual Upload" below.');
+                    return;
+                }
+                const result = await window.electronAPI.readTimetableFile();
+                if (result.success && result.data) {
+                    parseICSFile(result.data, result.lastModified);
+                    setError('');
+                } else {
+                    setError(result.error || 'Could not read the saved timetable file.');
+                }
+                return;
+            }
+
             const response = await fetch('/timetable/rozvrh.ics');
 
             if (response.ok) {
@@ -60,10 +75,10 @@ function Timetable() {
                 parseICSFile(icsData, lastModified || undefined);
                 setError('');
             } else {
-                setError('No timetable file found. Place rozvrh.ics in public/timetable/ folder.');
+                setError('No timetable file found. Use "Manual Upload" below.');
             }
         } catch (err: any) {
-            setError('Could not load timetable file. Make sure rozvrh.ics is in public/timetable/');
+            setError('Could not load timetable file: ' + err.message);
         } finally {
             setChecking(false);
         }
@@ -74,9 +89,16 @@ function Timetable() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const icsData = event.target?.result as string;
             parseICSFile(icsData);
+
+            if (window.electronAPI) {
+                const result = await window.electronAPI.saveTimetableFile(icsData);
+                if (!result.success) {
+                    setError('Timetable loaded, but could not save it for next time: ' + result.error);
+                }
+            }
         };
 
         reader.readAsText(file);
@@ -195,8 +217,8 @@ function Timetable() {
                 <strong>How to update:</strong>
                 <ol style={{ marginTop: '10px', marginBottom: '0' }}>
                     <li>Download ICS from <a href="https://apl.unob.cz/portalosoba/Rozvrh/" target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>University Portal</a></li>
-                    <li>Save it as <code style={{ backgroundColor: '#fff', padding: '2px 5px', borderRadius: '3px' }}>rozvrh.ics</code> in: <code style={{ backgroundColor: '#fff', padding: '2px 5px', borderRadius: '3px' }}>public/timetable/</code></li>
-                    <li>App will auto-check every 5 minutes, or click "Check for Updates"</li>
+                    <li>Click "Manual Upload" below and pick the .ics file</li>
+                    <li>It's saved automatically - no need to re-upload each time you open the app, only when your schedule changes</li>
                 </ol>
             </div>
 
@@ -216,7 +238,7 @@ function Timetable() {
             <div style={{ flex: 1, overflowY: 'auto' }}>
                 {events.length === 0 ? (
                     <p style={{ color: '#666', textAlign: 'center', marginTop: '40px' }}>
-                        No timetable loaded. Place rozvrh.ics in public/timetable/ folder or upload manually.
+                        No timetable loaded. Click "Manual Upload" above to add your .ics file.
                     </p>
                 ) : Object.keys(groupedEvents).length === 0 ? (
                     <p style={{ color: '#666', textAlign: 'center', marginTop: '40px' }}>

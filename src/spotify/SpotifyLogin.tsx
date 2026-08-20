@@ -14,47 +14,17 @@ function SpotifyLogin({ onLogout, isLoggedIn }: SpotifyLoginProps) {
 
     if (isLoggedIn && onLogout) {
         return (
-            <button
-                onClick={onLogout}
-                style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                }}
-            >
+            <button className="spotify-logout-button" onClick={onLogout}>
                 Logout
             </button>
         );
     }
 
     return (
-        <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'column',
-            gap: '20px'
-        }}>
+        <div className="spotify-login-screen">
             <h2>Connect to Spotify</h2>
-            <p style={{ color: '#666' }}>Note: Spotify Premium is required for playback</p>
-            <button
-                onClick={handleLogin}
-                style={{
-                    padding: '15px 30px',
-                    backgroundColor: '#1DB954',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '25px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                }}
-            >
+            <p className="spotify-login-note">Note: Spotify Premium is required for playback</p>
+            <button className="spotify-login-button" onClick={handleLogin}>
                 Login with Spotify
             </button>
         </div>

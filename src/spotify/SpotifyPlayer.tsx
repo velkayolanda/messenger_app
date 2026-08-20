@@ -1,14 +1,28 @@
 import React from 'react';
-import { Track } from './types';
+import { Track, RepeatMode } from './types';
 
 interface SpotifyPlayerProps {
     currentTrack: Track | null;
     isPlaying: boolean;
     position: number;
     duration: number;
+    volume: number;
+    shuffleOn: boolean;
+    repeatMode: RepeatMode;
     onTogglePlay: () => void;
     onSkipNext: () => void;
     onSkipPrevious: () => void;
+    onSeek: (positionMs: number) => void;
+    onVolumeChange: (volume: number) => void;
+    onToggleShuffle: () => void;
+    onCycleRepeat: () => void;
+}
+
+function formatTime(ms: number) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function SpotifyPlayer({
@@ -16,114 +30,96 @@ function SpotifyPlayer({
                            isPlaying,
                            position,
                            duration,
+                           volume,
+                           shuffleOn,
+                           repeatMode,
                            onTogglePlay,
                            onSkipNext,
-                           onSkipPrevious
+                           onSkipPrevious,
+                           onSeek,
+                           onVolumeChange,
+                           onToggleShuffle,
+                           onCycleRepeat
                        }: SpotifyPlayerProps) {
-
-    const formatTime = (ms: number) => {
-        const minutes = Math.floor(ms / 60000);
-        const seconds = Math.floor((ms % 60000) / 1000);
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const handleSeekClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!duration) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        onSeek(Math.round(ratio * duration));
     };
 
     if (!currentTrack) {
         return (
-            <div style={{
-                backgroundColor: '#282828',
-                padding: '20px',
-                borderRadius: '8px',
-                color: 'white',
-                textAlign: 'center'
-            }}>
-                <p style={{ color: '#b3b3b3' }}>Search and play a song to get started</p>
+            <div className="spotify-player spotify-player-empty">
+                <p>Search and play a song to get started</p>
             </div>
         );
     }
 
+    const progressPct = duration ? (position / duration) * 100 : 0;
+
     return (
-        <div style={{
-            backgroundColor: '#282828',
-            padding: '20px',
-            borderRadius: '8px',
-            color: 'white'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
+        <div className="spotify-player">
+            <div className="spotify-player-track-info">
                 <img
                     src={currentTrack.album.images[0]?.url}
                     alt={currentTrack.name}
-                    style={{ width: '60px', height: '60px', borderRadius: '4px' }}
+                    className="spotify-player-artwork"
                 />
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{currentTrack.name}</div>
-                    <div style={{ fontSize: '14px', color: '#b3b3b3' }}>
+                <div className="spotify-player-meta">
+                    <div className="spotify-player-track-name">{currentTrack.name}</div>
+                    <div className="spotify-player-artist-name">
                         {currentTrack.artists.map(a => a.name).join(', ')}
                     </div>
                 </div>
-            </div>
-
-            {/* Progress bar */}
-            <div style={{ marginBottom: '15px' }}>
-                <div style={{
-                    width: '100%',
-                    height: '4px',
-                    backgroundColor: '#404040',
-                    borderRadius: '2px',
-                    overflow: 'hidden'
-                }}>
-                    <div style={{
-                        width: `${(position / duration) * 100}%`,
-                        height: '100%',
-                        backgroundColor: '#1DB954'
-                    }}></div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '5px', color: '#b3b3b3' }}>
-                    <span>{formatTime(position)}</span>
-                    <span>{formatTime(duration)}</span>
+                <div className="spotify-player-volume">
+                    <span className="spotify-volume-icon">{volume === 0 ? '\uD83D\uDD07' : '\uD83D\uDD0A'}</span>
+                    <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={volume}
+                        onChange={(e) => onVolumeChange(Number(e.target.value))}
+                        className="spotify-volume-slider"
+                        aria-label="Volume"
+                    />
                 </div>
             </div>
 
-            {/* Controls */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+            <div className="spotify-progress-row">
+                <span className="spotify-time">{formatTime(position)}</span>
+                <div className="spotify-progress-bar" onClick={handleSeekClick}>
+                    <div className="spotify-progress-fill" style={{ width: `${progressPct}%` }} />
+                </div>
+                <span className="spotify-time">{formatTime(duration)}</span>
+            </div>
+
+            <div className="spotify-controls-row">
                 <button
-                    onClick={onSkipPrevious}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#404040',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        cursor: 'pointer'
-                    }}
+                    className={`spotify-icon-button ${shuffleOn ? 'active' : ''}`}
+                    onClick={onToggleShuffle}
+                    aria-label="Shuffle"
+                    title="Shuffle"
                 >
-                    ⏮️ Previous
+                    &#128256;
+                </button>
+                <button className="spotify-icon-button" onClick={onSkipPrevious} aria-label="Previous">
+                    &#9198;
+                </button>
+                <button className="spotify-play-pause" onClick={onTogglePlay} aria-label={isPlaying ? 'Pause' : 'Play'}>
+                    {isPlaying ? '\u23F8' : '\u25B6'}
+                </button>
+                <button className="spotify-icon-button" onClick={onSkipNext} aria-label="Next">
+                    &#9197;
                 </button>
                 <button
-                    onClick={onTogglePlay}
-                    style={{
-                        padding: '10px 30px',
-                        backgroundColor: '#1DB954',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
+                    className={`spotify-icon-button ${repeatMode !== 'off' ? 'active' : ''}`}
+                    onClick={onCycleRepeat}
+                    aria-label="Repeat"
+                    title={`Repeat: ${repeatMode}`}
                 >
-                    {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-                </button>
-                <button
-                    onClick={onSkipNext}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#404040',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        cursor: 'pointer'
-                    }}
-                >
-                    Next ⏭️
+                    {repeatMode === 'track' ? '\uD83D\uDD01\uFE0F1' : '\uD83D\uDD01'}
                 </button>
             </div>
         </div>

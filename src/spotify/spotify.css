@@ -1,0 +1,582 @@
+.spotify-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background-color: #121212;
+    color: #ffffff;
+    box-sizing: border-box;
+}
+
+.spotify-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.spotify-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.spotify-header-title h2 {
+    margin: 0;
+}
+
+.spotify-status {
+    font-size: 12px;
+    color: #888;
+}
+
+.spotify-error {
+    background-color: #4a1c1c;
+    color: #ff9a9a;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+
+.spotify-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #282828;
+}
+
+.spotify-tab {
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+}
+
+.spotify-tab:hover {
+    color: #ffffff;
+}
+
+.spotify-tab.active {
+    color: #1DB954;
+    border-bottom-color: #1DB954;
+}
+
+.spotify-content {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    min-height: 0;
+}
+
+/* Login screen */
+.spotify-login-screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    color: #ffffff;
+    background-color: #121212;
+}
+
+.spotify-login-note {
+    color: #b3b3b3;
+}
+
+.spotify-login-button {
+    padding: 15px 30px;
+    background-color: #1DB954;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.spotify-login-button:hover {
+    background-color: #1ed760;
+}
+
+.spotify-logout-button {
+    padding: 8px 16px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Search */
+.spotify-search-bar {
+    margin-bottom: 16px;
+}
+
+.spotify-search-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #333;
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border-radius: 20px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.spotify-search-input:focus {
+    outline: none;
+    border-color: #1DB954;
+}
+
+.spotify-empty-state {
+    color: #888;
+    text-align: center;
+    padding: 24px;
+    font-size: 14px;
+}
+
+.spotify-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.spotify-track-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.spotify-track-row:hover {
+    background-color: #1e1e1e;
+}
+
+.spotify-track-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    cursor: pointer;
+    object-fit: cover;
+}
+
+.spotify-track-details {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.spotify-track-name {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-track-artist {
+    font-size: 12px;
+    color: #b3b3b3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-track-duration {
+    font-size: 12px;
+    color: #888;
+    flex-shrink: 0;
+}
+
+.spotify-queue-button {
+    background: none;
+    border: 1px solid #555;
+    color: #b3b3b3;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.spotify-queue-button:hover {
+    border-color: #1DB954;
+    color: #1DB954;
+}
+
+/* Playlists grid */
+.spotify-playlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+}
+
+.spotify-playlist-card {
+    cursor: pointer;
+}
+
+.spotify-playlist-artwork-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    margin-bottom: 8px;
+}
+
+.spotify-playlist-artwork {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    background-color: #282828;
+}
+
+.spotify-playlist-play-overlay {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #1DB954;
+    color: #000;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    font-size: 14px;
+}
+
+.spotify-playlist-card:hover .spotify-playlist-play-overlay {
+    opacity: 1;
+}
+
+.spotify-playlist-name {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-playlist-count {
+    font-size: 12px;
+    color: #888;
+}
+
+.spotify-track-list-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.spotify-track-list-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.spotify-track-list-header h3 {
+    flex: 1;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-back-button {
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.spotify-back-button:hover {
+    color: #ffffff;
+}
+
+.spotify-play-button {
+    background-color: #1DB954;
+    color: #000;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Player */
+.spotify-player {
+    background-color: #181818;
+    padding: 16px 20px;
+    border-radius: 8px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.spotify-player-empty {
+    text-align: center;
+    color: #b3b3b3;
+}
+
+.spotify-player-track-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 12px;
+}
+
+.spotify-player-artwork {
+    width: 56px;
+    height: 56px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.spotify-player-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.spotify-player-track-name {
+    font-weight: bold;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-player-artist-name {
+    font-size: 13px;
+    color: #b3b3b3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-player-volume {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 160px;
+    flex-shrink: 0;
+}
+
+.spotify-volume-icon {
+    font-size: 14px;
+}
+
+.spotify-volume-slider {
+    flex: 1;
+    accent-color: #1DB954;
+}
+
+.spotify-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.spotify-time {
+    font-size: 11px;
+    color: #b3b3b3;
+    width: 34px;
+    flex-shrink: 0;
+}
+
+.spotify-progress-bar {
+    flex: 1;
+    height: 4px;
+    background-color: #404040;
+    border-radius: 2px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.spotify-progress-fill {
+    height: 100%;
+    background-color: #1DB954;
+}
+
+.spotify-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.spotify-icon-button {
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    line-height: 1;
+}
+
+.spotify-icon-button:hover {
+    color: #ffffff;
+}
+
+.spotify-icon-button.active {
+    color: #1DB954;
+}
+
+.spotify-play-pause {
+    background-color: #ffffff;
+    color: #000;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spotify-play-pause:hover {
+    transform: scale(1.06);
+}
+/* Header actions */
+.spotify-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spotify-header-icon-button {
+    background: none;
+    border: 1px solid #333;
+    color: #b3b3b3;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spotify-header-icon-button:hover {
+    color: #ffffff;
+    border-color: #1DB954;
+}
+
+/* Devices / queue overlay panel */
+.spotify-devices-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.spotify-devices-panel {
+    background-color: #181818;
+    border-radius: 8px;
+    padding: 20px;
+    width: 320px;
+    max-height: 70vh;
+    overflow-y: auto;
+    color: #ffffff;
+}
+
+.spotify-devices-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.spotify-devices-header h3 {
+    margin: 0;
+}
+
+.spotify-devices-close {
+    background: none;
+    border: none;
+    color: #b3b3b3;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.spotify-devices-close:hover {
+    color: #ffffff;
+}
+
+.spotify-device-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: none;
+    border: none;
+    color: #ffffff;
+    padding: 10px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 14px;
+}
+
+.spotify-device-row:hover:not(:disabled) {
+    background-color: #282828;
+}
+
+.spotify-device-row:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.spotify-device-row.active {
+    color: #1DB954;
+}
+
+.spotify-device-icon {
+    font-size: 18px;
+}
+
+.spotify-device-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-device-active-badge {
+    font-size: 11px;
+    color: #1DB954;
+}
+
+.spotify-queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.spotify-queue-note {
+    font-size: 12px;
+    color: #888;
+    margin: 8px 0 0;
+}

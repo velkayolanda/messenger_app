@@ -12,6 +12,18 @@ export interface Email {
     isRead: boolean;
 }
 
+export interface SpotifyTokenData {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number; // epoch ms
+}
+
+export interface GoogleTokenData {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number; // epoch ms
+}
+
 export interface ElectronAPI {
     connectEmail: (credentials: EmailCredentials) => Promise<{ success: boolean; error?: string }>;
     fetchEmails: () => Promise<{ success: boolean; emails?: Email[]; error?: string }>;
@@ -21,11 +33,17 @@ export interface ElectronAPI {
     clearCredentials: () => Promise<{ success: boolean }>;
     saveTimetableId: (id: string) => Promise<{ success: boolean }>;
     getTimetableId: () => Promise<string | null>;
-    saveSpotifyToken: (token: string) => Promise<{ success: boolean }>;
-    getSpotifyToken: () => Promise<string | null>;
+    saveSpotifyToken: (tokenData: SpotifyTokenData) => Promise<{ success: boolean }>;
+    getSpotifyToken: () => Promise<SpotifyTokenData | null>;
     clearSpotifyToken: () => Promise<{ success: boolean }>;
-    readTimetableFile: (filePath: string) => Promise<{ success: boolean; data?: string; lastModified?: string; error?: string }>;
-    checkTimetableExists: (filePath: string) => Promise<{ exists: boolean }>;
+    saveTimetableFile: (icsContent: string) => Promise<{ success: boolean; lastModified?: string; error?: string }>;
+    readTimetableFile: () => Promise<{ success: boolean; data?: string; lastModified?: string; error?: string }>;
+    checkTimetableExists: () => Promise<{ exists: boolean }>;
+    saveGoogleToken: (tokenData: GoogleTokenData) => Promise<{ success: boolean }>;
+    getGoogleToken: () => Promise<GoogleTokenData | null>;
+    clearGoogleToken: () => Promise<{ success: boolean }>;
+    saveLocalTodos: (todosJson: string) => Promise<{ success: boolean }>;
+    getLocalTodos: () => Promise<string | null>;
 }
 
 declare global {

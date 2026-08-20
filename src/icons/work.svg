@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="Work Email" role="img">
+    <rect width="512" height="512" rx="15%" fill="#5F6368"/>
+    <rect x="80" y="200" width="352" height="216" rx="20" fill="#ffffff"/>
+    <path d="M192 200v-32c0-22 18-40 40-40h48c22 0 40 18 40 40v32" stroke="#ffffff" stroke-width="28" fill="none"/>
+    <path d="M80 232l176 112 176-112" stroke="#5F6368" stroke-width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

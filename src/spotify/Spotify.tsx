@@ -1,25 +1,86 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Track } from './types';
+import { Device, Playlist, RepeatMode, Track } from './types';
+import { SpotifyTokenData } from '../electron.d';
 import SpotifyLogin from './SpotifyLogin';
 import SpotifySearch from './SpotifySearch';
 import SpotifyPlayer from './SpotifyPlayer';
-import { exchangeCodeForToken } from '../spotifyConfig';
+import SpotifyPlaylists from './SpotifyPlaylists';
+import SpotifyDevices from './SpotifyDevices';
+import SpotifyQueue from './SpotifyQueue';
+import { exchangeCodeForToken, ensureValidToken } from '../spotifyConfig';
+import {
+    SpotifyAuthError,
+    searchTracks as apiSearchTracks,
+    getUserPlaylists,
+    getPlaylistTracks,
+    getLikedSongs,
+    playTrackOnDevice,
+    playContextOnDevice,
+    addToQueue as apiAddToQueue,
+    setShuffle as apiSetShuffle,
+    setRepeat as apiSetRepeat,
+    getAvailableDevices,
+    transferPlayback,
+    getQueue,
+    getCurrentPlaybackState,
+    seekToPosition
+} from './api';
+import './spotify.css';
+
+type Tab = 'search' | 'playlists' | 'liked';
 
 function Spotify() {
-    const [token, setToken] = useState<string | null>(null);
+    const [tokenData, setTokenData] = useState<SpotifyTokenData | null>(null);
     const [deviceId, setDeviceId] = useState<string>('');
     const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [position, setPosition] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [volume, setVolumeState] = useState(0.5);
+    const [shuffleOn, setShuffleOn] = useState(false);
+    const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+
+    const [activeTab, setActiveTab] = useState<Tab>('search');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Track[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [playlistsLoading, setPlaylistsLoading] = useState(false);
+    const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
+    const [playlistTracks, setPlaylistTracks] = useState<Track[]>([]);
+
+    const [likedSongs, setLikedSongs] = useState<Track[]>([]);
+    const [likedLoading, setLikedLoading] = useState(false);
+
     const [isReady, setIsReady] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const [showDevices, setShowDevices] = useState(false);
+    const [devices, setDevices] = useState<Device[]>([]);
+    const [devicesLoading, setDevicesLoading] = useState(false);
+
+    const [showQueue, setShowQueue] = useState(false);
+    const [queueTracks, setQueueTracks] = useState<Track[]>([]);
+    const [queueLoading, setQueueLoading] = useState(false);
 
     const playerRef = useRef<Spotify.Player | null>(null);
     const hasExchangedToken = useRef(false);
     const sdkLoaded = useRef(false);
     const positionInterval = useRef<NodeJS.Timeout | null>(null);
+    const searchDebounce = useRef<NodeJS.Timeout | null>(null);
+    const tokenDataRef = useRef<SpotifyTokenData | null>(null);
+    tokenDataRef.current = tokenData;
+    const positionRef = useRef(0);
+    positionRef.current = position;
+    const currentTrackRef = useRef<Track | null>(null);
+    currentTrackRef.current = currentTrack;
+    const handleTokenRefreshed = useCallback(async (updated: SpotifyTokenData) => {
+        setTokenData(updated);
+        if (window.electronAPI) {
+            await window.electronAPI.saveSpotifyToken(updated);
+        }
+    }, []);
 
     const handleLogout = useCallback(async () => {
         if (playerRef.current) {
@@ -29,21 +90,46 @@ function Spotify() {
         if (window.electronAPI) {
             await window.electronAPI.clearSpotifyToken();
         }
-        setToken(null);
+        setTokenData(null);
         setCurrentTrack(null);
         setIsReady(false);
         setDeviceId('');
         sdkLoaded.current = false;
     }, []);
 
-    // Check for token on mount
+    // Wraps API calls: on auth failure, logs the user out; on other errors, surfaces a message.
+    const withErrorHandling = useCallback(
+        async (fn: () => Promise<void>, fallbackMessage: string) => {
+            try {
+                setError(null);
+                await fn();
+            } catch (err) {
+                if (err instanceof SpotifyAuthError) {
+                    handleLogout();
+                } else {
+                    console.error(err);
+                    setError(fallbackMessage);
+                }
+            }
+        },
+        [handleLogout]
+    );
+
+    // Check for saved token, or an incoming auth code, on mount
     useEffect(() => {
         const checkToken = async () => {
             if (window.electronAPI) {
-                const savedToken = await window.electronAPI.getSpotifyToken();
-                if (savedToken) {
-                    setToken(savedToken);
-                    return;
+                const saved = await window.electronAPI.getSpotifyToken();
+                if (saved) {
+                    const valid = await ensureValidToken(saved);
+                    if (valid) {
+                        setTokenData(valid);
+                        if (valid.accessToken !== saved.accessToken) {
+                            await window.electronAPI.saveSpotifyToken(valid);
+                        }
+                        return;
+                    }
+                    await window.electronAPI.clearSpotifyToken();
                 }
             }
 
@@ -52,12 +138,12 @@ function Spotify() {
 
             if (code && !hasExchangedToken.current) {
                 hasExchangedToken.current = true;
-                const accessToken = await exchangeCodeForToken(code);
+                const exchanged = await exchangeCodeForToken(code);
 
-                if (accessToken) {
-                    setToken(accessToken);
+                if (exchanged) {
+                    setTokenData(exchanged);
                     if (window.electronAPI) {
-                        await window.electronAPI.saveSpotifyToken(accessToken);
+                        await window.electronAPI.saveSpotifyToken(exchanged);
                     }
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
@@ -68,39 +154,63 @@ function Spotify() {
         checkToken();
     }, []);
 
-    // Initialize Spotify Player
+    // Initialize Spotify Web Playback SDK
     useEffect(() => {
-        if (!token || sdkLoaded.current) return;
+        if (!tokenData || sdkLoaded.current) return;
 
         const initializePlayer = () => {
+            // Give this tab/window a stable-but-unique device name, so opening the
+            // dashboard in more than one place (browser tab + Electron window, or
+            // two Electron windows) doesn't create colliding "same" devices that
+            // fight over playback control.
+            const instanceId = (() => {
+                const existing = window.sessionStorage.getItem('spotify_instance_id');
+                if (existing) return existing;
+                const generated = Math.random().toString(36).slice(2, 8);
+                window.sessionStorage.setItem('spotify_instance_id', generated);
+                return generated;
+            })();
+
             const spotifyPlayer = new window.Spotify.Player({
-                name: 'My Dashboard Player',
-                getOAuthToken: (cb: (token: string) => void) => cb(token),
-                volume: 0.5
+                name: `My Dashboard Player (${instanceId})`,
+                getOAuthToken: (cb: (token: string) => void) => {
+                    // Always hand the SDK the freshest token we have.
+                    cb(tokenDataRef.current?.accessToken || '');
+                },
+                volume
             });
 
             spotifyPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
-                console.log('Spotify Player Ready with Device ID:', device_id);
                 setDeviceId(device_id);
                 setIsReady(true);
             });
 
-            spotifyPlayer.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-                console.log('Device has gone offline:', device_id);
+            spotifyPlayer.addListener('not_ready', () => {
                 setIsReady(false);
             });
 
             spotifyPlayer.addListener('initialization_error', ({ message }: { message: string }) => {
                 console.error('Initialization error:', message);
+                setError('Failed to initialize the player.');
             });
 
-            spotifyPlayer.addListener('authentication_error', ({ message }: { message: string }) => {
+            spotifyPlayer.addListener('authentication_error', async ({ message }: { message: string }) => {
                 console.error('Authentication error:', message);
+                // Try a refresh before giving up entirely.
+                const current = tokenDataRef.current;
+                if (current) {
+                    const refreshed = await ensureValidToken(current);
+                    if (refreshed) {
+                        await handleTokenRefreshed(refreshed);
+                        return;
+                    }
+                }
                 handleLogout();
             });
 
             spotifyPlayer.addListener('account_error', ({ message }: { message: string }) => {
                 console.error('Account error (Premium required):', message);
+                setError('Spotify Premium is required for playback.');
             });
 
             spotifyPlayer.addListener('player_state_changed', (state: Spotify.PlaybackState | null) => {
@@ -141,12 +251,25 @@ function Spotify() {
                 playerRef.current = null;
             }
         };
-    }, [token, handleLogout]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tokenData ? 'has-token' : 'no-token', handleLogout, handleTokenRefreshed]);
 
-    // Update position while playing
+    // Smoothly advance the displayed position between state updates
     useEffect(() => {
         if (isPlaying) {
-            positionInterval.current = setInterval(() => {
+            let tick = 0;
+            positionInterval.current = setInterval(async () => {
+                tick += 1;
+                if (tick % 5 === 0 && playerRef.current) {
+                    const state = await playerRef.current.getCurrentState();
+                    if (!state) {
+                        setIsPlaying(false);
+                        return;
+                    }
+                    setPosition(state.position);
+                    setIsPlaying(!state.paused);
+                    return;
+                }
                 setPosition(prev => Math.min(prev + 1000, duration));
             }, 1000);
         } else if (positionInterval.current) {
@@ -172,83 +295,332 @@ function Spotify() {
         playerRef.current?.previousTrack();
     }, []);
 
-    const searchTracks = useCallback(async () => {
-        if (!token || !searchQuery.trim()) return;
+    const seekTo = useCallback((positionMs: number) => {
+        playerRef.current?.seek(positionMs);
+        setPosition(positionMs);
+    }, []);
 
-        try {
-            const response = await fetch(
-                `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=10`,
-                { headers: { 'Authorization': `Bearer ${token}` } }
+    const changeVolume = useCallback((newVolume: number) => {
+        setVolumeState(newVolume);
+        playerRef.current?.setVolume(newVolume);
+    }, []);
+
+    const toggleShuffle = useCallback(() => {
+        if (!tokenData || !deviceId) return;
+        const next = !shuffleOn;
+        setShuffleOn(next);
+        withErrorHandling(
+            () => apiSetShuffle(next, deviceId, tokenData, handleTokenRefreshed),
+            'Could not change shuffle.'
+        );
+    }, [tokenData, deviceId, shuffleOn, withErrorHandling, handleTokenRefreshed]);
+
+    const cycleRepeat = useCallback(() => {
+        if (!tokenData || !deviceId) return;
+        const order: RepeatMode[] = ['off', 'context', 'track'];
+        const next = order[(order.indexOf(repeatMode) + 1) % order.length];
+        setRepeatMode(next);
+        withErrorHandling(
+            () => apiSetRepeat(next, deviceId, tokenData, handleTokenRefreshed),
+            'Could not change repeat mode.'
+        );
+    }, [tokenData, deviceId, repeatMode, withErrorHandling, handleTokenRefreshed]);
+
+    // --- Search ---
+    const runSearch = useCallback(
+        (query: string) => {
+            if (!tokenData || !query.trim()) {
+                setSearchResults([]);
+                return;
+            }
+            setIsSearching(true);
+            withErrorHandling(async () => {
+                const results = await apiSearchTracks(query, tokenData, handleTokenRefreshed);
+                setSearchResults(results);
+            }, 'Search failed.').finally(() => setIsSearching(false));
+        },
+        [tokenData, withErrorHandling, handleTokenRefreshed]
+    );
+
+    const onSearchQueryChange = useCallback(
+        (query: string) => {
+            setSearchQuery(query);
+            if (searchDebounce.current) clearTimeout(searchDebounce.current);
+            searchDebounce.current = setTimeout(() => runSearch(query), 400);
+        },
+        [runSearch]
+    );
+
+    // --- Playlists ---
+    const loadPlaylists = useCallback(() => {
+        if (!tokenData) return;
+        setPlaylistsLoading(true);
+        withErrorHandling(async () => {
+            const items = await getUserPlaylists(tokenData, handleTokenRefreshed);
+            setPlaylists(items);
+        }, 'Could not load playlists.').finally(() => setPlaylistsLoading(false));
+    }, [tokenData, withErrorHandling, handleTokenRefreshed]);
+
+    const openPlaylist = useCallback(
+        (playlist: Playlist) => {
+            if (!tokenData) return;
+            setActivePlaylist(playlist);
+            withErrorHandling(async () => {
+                const tracks = await getPlaylistTracks(playlist.id, tokenData, handleTokenRefreshed);
+                setPlaylistTracks(tracks);
+            }, 'Could not load playlist tracks.');
+        },
+        [tokenData, withErrorHandling, handleTokenRefreshed]
+    );
+
+    const playPlaylist = useCallback(
+        (playlist: Playlist) => {
+            if (!tokenData) return;
+            if (!deviceId || !isReady) {
+                setError('Player is still connecting - try again in a moment.');
+                return;
+            }
+            withErrorHandling(
+                () => playContextOnDevice(deviceId, playlist.uri, tokenData, handleTokenRefreshed),
+                'Could not start playback.'
             );
+        },
+        [tokenData, deviceId, isReady, withErrorHandling, handleTokenRefreshed]
+    );
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    handleLogout();
-                    return;
+    // --- Liked songs ---
+    const loadLikedSongs = useCallback(() => {
+        if (!tokenData) return;
+        setLikedLoading(true);
+        withErrorHandling(async () => {
+            const tracks = await getLikedSongs(tokenData, handleTokenRefreshed);
+            setLikedSongs(tracks);
+        }, 'Could not load liked songs.').finally(() => setLikedLoading(false));
+    }, [tokenData, withErrorHandling, handleTokenRefreshed]);
+
+    useEffect(() => {
+        if (!tokenData) return;
+        if (activeTab === 'playlists' && playlists.length === 0) loadPlaylists();
+        if (activeTab === 'liked' && likedSongs.length === 0) loadLikedSongs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, tokenData]);
+
+    // --- Playback ---
+    const playTrack = useCallback(
+        (uri: string) => {
+            if (!tokenData) return;
+            if (!deviceId || !isReady) {
+                setError('Player is still connecting - try again in a moment.');
+                return;
+            }
+            withErrorHandling(
+                () => playTrackOnDevice(deviceId, uri, tokenData, handleTokenRefreshed),
+                'Could not play track.'
+            );
+        },
+        [tokenData, deviceId, isReady, withErrorHandling, handleTokenRefreshed]
+    );
+
+    const addToQueue = useCallback(
+        (uri: string) => {
+            if (!tokenData) return;
+            if (!deviceId || !isReady) {
+                setError('Player is still connecting - try again in a moment.');
+                return;
+            }
+            withErrorHandling(
+                () => apiAddToQueue(uri, deviceId, tokenData, handleTokenRefreshed),
+                'Could not add to queue.'
+            );
+        },
+        [tokenData, deviceId, isReady, withErrorHandling, handleTokenRefreshed]
+    );
+
+    // --- Devices ---
+    const openDevicePicker = useCallback(() => {
+        if (!tokenData) return;
+        setShowDevices(true);
+        setDevicesLoading(true);
+        withErrorHandling(async () => {
+            const list = await getAvailableDevices(tokenData, handleTokenRefreshed);
+            setDevices(list);
+        }, 'Could not load devices.').finally(() => setDevicesLoading(false));
+    }, [tokenData, withErrorHandling, handleTokenRefreshed]);
+
+    const selectDevice = useCallback(
+        (targetDeviceId: string) => {
+            if (!tokenData) return;
+            const capturedPositionMs = positionRef.current;
+            const capturedTrackUri = currentTrackRef.current?.uri || null;
+
+            withErrorHandling(async () => {
+                await transferPlayback(targetDeviceId, tokenData, handleTokenRefreshed);
+
+                if (!capturedTrackUri) return;
+
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    const state = await getCurrentPlaybackState(tokenData, handleTokenRefreshed);
+                    if (state?.deviceId === targetDeviceId && state.trackUri === capturedTrackUri) {
+                        await seekToPosition(capturedPositionMs, targetDeviceId, tokenData, handleTokenRefreshed);
+                        break;
+                    }
                 }
-                throw new Error('Search failed');
-            }
+            }, 'Could not switch device.');
 
-            const data = await response.json();
-            setSearchResults(data.tracks?.items || []);
-        } catch (error) {
-            console.error('Search failed:', error);
-        }
-    }, [token, searchQuery, handleLogout]);
+            setShowDevices(false);
+        },
+        [tokenData, withErrorHandling, handleTokenRefreshed]
+    );
 
-    const playTrack = useCallback(async (uri: string) => {
-        if (!token || !deviceId) return;
+    // --- Queue ---
+    const openQueue = useCallback(() => {
+        if (!tokenData) return;
+        setShowQueue(true);
+        setQueueLoading(true);
+        withErrorHandling(async () => {
+            const { queue } = await getQueue(tokenData, handleTokenRefreshed);
+            setQueueTracks(queue);
+        }, 'Could not load queue.').finally(() => setQueueLoading(false));
+    }, [tokenData, withErrorHandling, handleTokenRefreshed]);
 
-        try {
-            const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ uris: [uri] })
-            });
-
-            if (!response.ok && response.status === 401) {
-                handleLogout();
-            }
-        } catch (error) {
-            console.error('Play failed:', error);
-        }
-    }, [token, deviceId, handleLogout]);
-
-    if (!token) {
+    if (!tokenData) {
         return <SpotifyLogin isLoggedIn={false} />;
     }
 
     return (
-        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <h2 style={{ margin: 0 }}>Spotify Player</h2>
-                    {!isReady && (
-                        <span style={{ fontSize: '12px', color: '#888' }}>Connecting...</span>
-                    )}
+        <div className="spotify-container">
+            <div className="spotify-header">
+                <div className="spotify-header-title">
+                    <h2>Spotify</h2>
+                    {!isReady && <span className="spotify-status">Connecting...</span>}
                 </div>
-                <SpotifyLogin isLoggedIn={true} onLogout={handleLogout} />
+                <div className="spotify-header-actions">
+                    <button className="spotify-header-icon-button" onClick={openQueue} title="Queue">
+                        &#9776;
+                    </button>
+                    <button className="spotify-header-icon-button" onClick={openDevicePicker} title="Devices">
+                        &#128266;
+                    </button>
+                    <SpotifyLogin isLoggedIn={true} onLogout={handleLogout} />
+                </div>
             </div>
 
-            <SpotifySearch
-                searchQuery={searchQuery}
-                onSearchQueryChange={setSearchQuery}
-                onSearch={searchTracks}
-                searchResults={searchResults}
-                onPlayTrack={playTrack}
-            />
+            {showDevices && (
+                <SpotifyDevices
+                    devices={devices}
+                    loading={devicesLoading}
+                    onSelectDevice={selectDevice}
+                    onClose={() => setShowDevices(false)}
+                />
+            )}
+
+            {showQueue && (
+                <SpotifyQueue
+                    queue={queueTracks}
+                    loading={queueLoading}
+                    onClose={() => setShowQueue(false)}
+                />
+            )}
+
+            {error && <div className="spotify-error">{error}</div>}
+
+            <div className="spotify-tabs">
+                <button
+                    className={`spotify-tab ${activeTab === 'search' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('search')}
+                >
+                    Search
+                </button>
+                <button
+                    className={`spotify-tab ${activeTab === 'playlists' ? 'active' : ''}`}
+                    onClick={() => { setActiveTab('playlists'); setActivePlaylist(null); }}
+                >
+                    Playlists
+                </button>
+                <button
+                    className={`spotify-tab ${activeTab === 'liked' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('liked')}
+                >
+                    Liked Songs
+                </button>
+            </div>
+
+            <div className="spotify-content">
+                {activeTab === 'search' && (
+                    <SpotifySearch
+                        searchQuery={searchQuery}
+                        onSearchQueryChange={onSearchQueryChange}
+                        searchResults={searchResults}
+                        isSearching={isSearching}
+                        onPlayTrack={playTrack}
+                        onAddToQueue={addToQueue}
+                    />
+                )}
+
+                {activeTab === 'playlists' && !activePlaylist && (
+                    <SpotifyPlaylists
+                        playlists={playlists}
+                        loading={playlistsLoading}
+                        onOpenPlaylist={openPlaylist}
+                        onPlayPlaylist={playPlaylist}
+                    />
+                )}
+
+                {activeTab === 'playlists' && activePlaylist && (
+                    <div className="spotify-track-list-view">
+                        <div className="spotify-track-list-header">
+                            <button className="spotify-back-button" onClick={() => setActivePlaylist(null)}>
+                                &larr; Back
+                            </button>
+                            <h3>{activePlaylist.name}</h3>
+                            <button
+                                className="spotify-play-button"
+                                onClick={() => playPlaylist(activePlaylist)}
+                            >
+                                Play
+                            </button>
+                        </div>
+                        <SpotifySearch
+                            searchQuery=""
+                            onSearchQueryChange={() => {}}
+                            searchResults={playlistTracks}
+                            isSearching={false}
+                            onPlayTrack={playTrack}
+                            onAddToQueue={addToQueue}
+                            hideSearchBar
+                        />
+                    </div>
+                )}
+
+                {activeTab === 'liked' && (
+                    <SpotifySearch
+                        searchQuery=""
+                        onSearchQueryChange={() => {}}
+                        searchResults={likedSongs}
+                        isSearching={likedLoading}
+                        onPlayTrack={playTrack}
+                        onAddToQueue={addToQueue}
+                        hideSearchBar
+                    />
+                )}
+            </div>
 
             <SpotifyPlayer
                 currentTrack={currentTrack}
                 isPlaying={isPlaying}
                 position={position}
                 duration={duration}
+                volume={volume}
+                shuffleOn={shuffleOn}
+                repeatMode={repeatMode}
                 onTogglePlay={togglePlay}
                 onSkipNext={skipNext}
                 onSkipPrevious={skipPrevious}
+                onSeek={seekTo}
+                onVolumeChange={changeVolume}
+                onToggleShuffle={toggleShuffle}
+                onCycleRepeat={cycleRepeat}
             />
         </div>
     );

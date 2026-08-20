@@ -193,14 +193,15 @@ ipcMain.handle('storage:getTimetableId', async () => {
     const id = store.get('timetableId');
     return id || null;
 });
-ipcMain.handle('storage:saveSpotifyToken', async (event, token) => {
-    store.set('spotifyToken', token);
+ipcMain.handle('storage:saveSpotifyToken', async (event, tokenData) => {
+    // tokenData: { accessToken, refreshToken, expiresAt }
+    store.set('spotifyToken', tokenData);
     return { success: true };
 });
 
 ipcMain.handle('storage:getSpotifyToken', async () => {
-    const token = store.get('spotifyToken');
-    return token || null;
+    const tokenData = store.get('spotifyToken');
+    return tokenData || null;
 });
 
 ipcMain.handle('storage:clearSpotifyToken', async () => {
@@ -208,11 +209,26 @@ ipcMain.handle('storage:clearSpotifyToken', async () => {
     return { success: true };
 });
 
-// File system handler for reading timetable
-ipcMain.handle('fs:readTimetableFile', async (event, filePath) => {
+// Timetable file lives in Electron's userData directory (writable both in dev
+// and in a packaged app), not in public/, which is read-only once bundled.
+const timetableDir = path.join(app.getPath('userData'), 'timetable');
+const timetableFilePath = path.join(timetableDir, 'rozvrh.ics');
+
+ipcMain.handle('fs:saveTimetableFile', async (event, icsContent) => {
     try {
-        const data = fs.readFileSync(filePath, 'utf8');
-        const stats = fs.statSync(filePath);
+        fs.mkdirSync(timetableDir, { recursive: true });
+        fs.writeFileSync(timetableFilePath, icsContent, 'utf8');
+        const stats = fs.statSync(timetableFilePath);
+        return { success: true, lastModified: stats.mtime.toISOString() };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('fs:readTimetableFile', async () => {
+    try {
+        const data = fs.readFileSync(timetableFilePath, 'utf8');
+        const stats = fs.statSync(timetableFilePath);
         return {
             success: true,
             data: data,
@@ -223,10 +239,35 @@ ipcMain.handle('fs:readTimetableFile', async (event, filePath) => {
     }
 });
 
-ipcMain.handle('fs:checkTimetableExists', async (event, filePath) => {
+ipcMain.handle('fs:checkTimetableExists', async () => {
     try {
-        return { exists: fs.existsSync(filePath) };
+        return { exists: fs.existsSync(timetableFilePath) };
     } catch (error) {
         return { exists: false };
     }
+});
+
+ipcMain.handle('storage:saveGoogleToken', async (event, tokenData) => {
+    store.set('googleToken', tokenData);
+    return { success: true };
+});
+
+ipcMain.handle('storage:getGoogleToken', async () => {
+    const tokenData = store.get('googleToken');
+    return tokenData || null;
+});
+
+ipcMain.handle('storage:clearGoogleToken', async () => {
+    store.delete('googleToken');
+    return { success: true };
+});
+
+ipcMain.handle('storage:saveLocalTodos', async (event, todosJson) => {
+    store.set('localTodos', todosJson);
+    return { success: true };
+});
+
+ipcMain.handle('storage:getLocalTodos', async () => {
+    const todosJson = store.get('localTodos');
+    return todosJson || null;
 });

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="Todo List" role="img">
+    <rect width="512" height="512" rx="15%" fill="#FF6B6B"/>
+    <rect x="120" y="120" width="272" height="272" rx="16" fill="none" stroke="#ffffff" stroke-width="20"/>
+    <path d="M160 200l30 30 50-56" stroke="#ffffff" stroke-width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="260" y="200" width="100" height="16" rx="8" fill="#ffffff"/>
+    <path d="M160 280l30 30 50-56" stroke="#ffffff" stroke-width="20" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="260" y="280" width="100" height="16" rx="8" fill="#ffffff"/>
+    <rect x="160" y="352" width="30" height="16" rx="8" fill="#ffffff" opacity="0.5"/>
+    <rect x="260" y="352" width="100" height="16" rx="8" fill="#ffffff" opacity="0.5"/>
+</svg>
