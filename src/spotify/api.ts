@@ -261,9 +261,12 @@ export async function getQueue(
 }
 export interface PlaybackState {
     deviceId: string | null;
+    deviceName: string | null;
     isPlaying: boolean;
     trackUri: string | null;
+    track: Track | null;
     positionMs: number;
+    durationMs: number;
 }
 
 export async function getCurrentPlaybackState(
@@ -278,9 +281,12 @@ export async function getCurrentPlaybackState(
     if (!data) return null;
     return {
         deviceId: data.device?.id || null,
+        deviceName: data.device?.name || null,
         isPlaying: Boolean(data.is_playing),
         trackUri: data.item?.uri || null,
-        positionMs: data.progress_ms || 0
+        track: data.item || null,
+        positionMs: data.progress_ms || 0,
+        durationMs: data.item?.duration_ms || 0
     };
 }
 
@@ -296,4 +302,46 @@ export async function seekToPosition(
         onTokenRefreshed,
         { method: 'PUT' }
     );
+}
+// Resumes/pauses/skips on a specific device via the Web API, rather than the
+// local SDK player - needed to control playback that's active on a different
+// device (phone, desktop app, speaker, etc.).
+export async function resumePlaybackOnDevice(
+    deviceId: string,
+    tokenData: SpotifyTokenData,
+    onTokenRefreshed: (t: SpotifyTokenData) => void
+): Promise<void> {
+    await spotifyFetch(`/me/player/play?device_id=${deviceId}`, tokenData, onTokenRefreshed, {
+        method: 'PUT'
+    });
+}
+
+export async function pausePlaybackOnDevice(
+    deviceId: string,
+    tokenData: SpotifyTokenData,
+    onTokenRefreshed: (t: SpotifyTokenData) => void
+): Promise<void> {
+    await spotifyFetch(`/me/player/pause?device_id=${deviceId}`, tokenData, onTokenRefreshed, {
+        method: 'PUT'
+    });
+}
+
+export async function skipNextOnDevice(
+    deviceId: string,
+    tokenData: SpotifyTokenData,
+    onTokenRefreshed: (t: SpotifyTokenData) => void
+): Promise<void> {
+    await spotifyFetch(`/me/player/next?device_id=${deviceId}`, tokenData, onTokenRefreshed, {
+        method: 'POST'
+    });
+}
+
+export async function skipPreviousOnDevice(
+    deviceId: string,
+    tokenData: SpotifyTokenData,
+    onTokenRefreshed: (t: SpotifyTokenData) => void
+): Promise<void> {
+    await spotifyFetch(`/me/player/previous?device_id=${deviceId}`, tokenData, onTokenRefreshed, {
+        method: 'POST'
+    });
 }

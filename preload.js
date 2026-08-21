@@ -28,4 +28,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     saveLocalTodos: (todosJson) => ipcRenderer.invoke('storage:saveLocalTodos', todosJson),
     getLocalTodos: () => ipcRenderer.invoke('storage:getLocalTodos'),
+    saveWeatherLocation: (locationJson) => ipcRenderer.invoke('storage:saveWeatherLocation', locationJson),
+    getWeatherLocation: () => ipcRenderer.invoke('storage:getWeatherLocation'),
 });

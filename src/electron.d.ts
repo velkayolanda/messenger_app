@@ -44,6 +44,8 @@ export interface ElectronAPI {
     clearGoogleToken: () => Promise<{ success: boolean }>;
     saveLocalTodos: (todosJson: string) => Promise<{ success: boolean }>;
     getLocalTodos: () => Promise<string | null>;
+    saveWeatherLocation: (locationJson: string) => Promise<{ success: boolean }>;
+    getWeatherLocation: () => Promise<string | null>;
 }
 
 declare global {

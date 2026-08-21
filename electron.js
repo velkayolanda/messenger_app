@@ -271,3 +271,12 @@ ipcMain.handle('storage:getLocalTodos', async () => {
     const todosJson = store.get('localTodos');
     return todosJson || null;
 });
+ipcMain.handle('storage:saveWeatherLocation', async (event, locationJson) => {
+    store.set('weatherLocation', locationJson);
+    return { success: true };
+});
+
+ipcMain.handle('storage:getWeatherLocation', async () => {
+    const locationJson = store.get('weatherLocation');
+    return locationJson || null;
+});
